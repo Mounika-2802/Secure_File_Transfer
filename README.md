@@ -25,11 +25,13 @@ A high-security file transfer system implementing **Zero-Knowledge Architecture*
 This project follows a Zero-Knowledge security model. Here is the step-by-step process of how a file is handled:
 
 **_1. Client-Side Preparation_**
+
 Key Generation: A 256-bit AES key is generated locally (master.key). This key never leaves the client's machine.
 
 File Chunking: The source file is read in 64KB chunks. This allows the system to handle GB-sized files without crashing the RAM and supports Resume Uploads.
 
 **_2. The Encryption Process (AES-256-GCM)_**
+
 For every chunk, the client:
 
 Generates a unique 12-byte Nonce (Initialization Vector).
@@ -41,6 +43,7 @@ Produces a 16-byte Authentication Tag (Integrity Check).
 Prepends the Nonce to the Ciphertext for storage.
 
 **_3. Secure Transfer & Storage_**
+
 Handshake: The client checks the server for existing chunks (/status/{file_id}) to skip already uploaded data.
 
 Upload: Chunks are sent via POST requests.
@@ -48,6 +51,7 @@ Upload: Chunks are sent via POST requests.
 Server Role: The server receives the encrypted binary blob and saves it to the encrypted_vault/. The server cannot read the file because it lacks the master.key.
 
 **_4. Retrieval & Integrity Verification_**
+
 Download: Chunks are fetched individually from the server.
 
 Authentication: During decryption, the GCM Tag is verified. If the server (or a hacker) modified even 1 bit of the encrypted file, the cryptography library will throw an InvalidTag error, and the process will stop.
