@@ -1,0 +1,6 @@
+*.key
+encrypted_vault/
+__pycache__/
+.venv/"master.key" 
+"encrypted_vault/" 
+"__pycache__/" 
