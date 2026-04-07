@@ -1,23 +1,21 @@
-# Encrypted File Transfer & Secure Storage
+# 🛡️ SecureCloud: Encrypted File Transfer & Storage
 
-A practical implementation of a Zero-Knowledge file transfer system using AES-256-GCM.
+A high-security file transfer system implementing **Zero-Knowledge Architecture**. Files are encrypted on the client side using **AES-256-GCM** before reaching the server.
 
-## 🛡️ Features
-- **AES-256-GCM:** Authenticated encryption that ensures both privacy and data integrity.
-- **Client-Side Encryption:** The server never sees the raw data or the encryption key.
-- **File Chunking:** Large files are broken into 64KB chunks to optimize memory.
-- **Secure Storage:** Files are stored as encrypted binary blobs on the server disk.
+## 🛠️ Implementation Details
+- **AES-256-GCM (AEAD):** Provides Confidentiality and Authenticity. If a single bit is changed on the server, decryption fails.
+- **Chunked Transfer:** Supports large files by splitting them into 64KB segments.
+- **Resume Support:** Checks server status before uploading to skip existing chunks.
+- **Zero-Knowledge:** The server stores `.bin` blobs but never receives the `master.key`.
 
-## 🕵️ Threat Model & Mitigation
+## 🕵️ Threat Model
 | Threat | Mitigation |
 | :--- | :--- |
-| **Man-in-the-Middle** | Payloads are encrypted; TLS/HTTPS should be used for transport. |
-| **Server Tampering** | AES-GCM Authentication Tags: Decryption fails if a single bit is changed. |
-| **Storage Breach** | Data is "at-rest" encrypted. Stolen files are useless without the `master.key`. |
-| **Key Management** | Keys are stored locally on the client and never shared with the server. |
+| **Man-in-the-Middle** | Payloads are pre-encrypted. *Note: In production, TLS/HTTPS is required to protect metadata.* |
+| **Server-Side Breach** | Even if the database is stolen, files remain encrypted blobs without the client-side key. |
+| **Data Corruption** | Built-in integrity tags (GCM) detect any unauthorized modifications on disk. |
 
-## 🚀 How to Run
-1. Install requirements: `pip install fastapi uvicorn cryptography requests`
-2. Start server: `cd server && python main.py`
-3. Run client: `cd client && python client.py`
-
+## 🚀 Usage
+1. **Server:** `cd server && python main.py`
+2. **Client Upload:** Call `secure_upload("file.zip")`
+3. **Client Download:** Call `secure_download("file_id", "restored.zip", total_chunks)`
