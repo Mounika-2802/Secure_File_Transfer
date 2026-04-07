@@ -45,4 +45,3 @@ def secure_download(file_id, output_name, total_chunks):
             decrypted = aesgcm.decrypt(nonce, ciphertext, None)
             out_f.write(decrypted)
             print(f"Decrypted chunk {idx}")
-    print("Download and Decryption Successful!")

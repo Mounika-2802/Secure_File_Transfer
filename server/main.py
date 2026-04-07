@@ -40,4 +40,3 @@ async def download_chunk(file_id: str, chunk_index: int):
     file_path = os.path.join(UPLOAD_DIR, file_id, f"chunk_{chunk_index}.bin")
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Chunk not found")
-    return FileResponse(file_path)
