@@ -2,41 +2,47 @@ import os
 import requests
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-CHUNK_SIZE = 64 * 1024  # 64KB
-SERVER_URL = "http://127.0.0.1:8000/upload"
+CHUNK_SIZE = 64 * 1024 
+URL = "http://127.0.0.1:8000"
 
-def secure_upload(file_path, key_path):
-    # 1. Load Key
-    with open(key_path, "rb") as f:
-        key = f.read()
-    aesgcm = AESGCM(key)
+def get_key():
+    return open("master.key", "rb").read()
+
+def secure_upload(file_path, file_id=None):
+    aesgcm = AESGCM(get_key())
+    if not file_id:
+        file_id = os.urandom(4).hex()
     
-    file_id = os.urandom(8).hex()
-    chunk_index = 0
+    # RESUME SUPPORT: Ask server how many chunks it has
+    res = requests.get(f"{URL}/status/{file_id}")
+    start_chunk = res.json().get("chunks_found", 0)
+    
+    print(f"Starting upload for {file_id} from chunk {start_chunk}...")
 
-    # 2. Read and Encrypt
     with open(file_path, "rb") as f:
-        while True:
-            data = f.read(CHUNK_SIZE)
-            if not data: break
-            
+        f.seek(start_chunk * CHUNK_SIZE) # Skip already uploaded data
+        idx = start_chunk
+        while chunk := f.read(CHUNK_SIZE):
             nonce = os.urandom(12)
-            # Encrypts + adds Integrity Tag (GCM)
-            ciphertext = aesgcm.encrypt(nonce, data, None)
+            ciphertext = aesgcm.encrypt(nonce, chunk, None)
             
-            # 3. Send to Server
-            payload = nonce + ciphertext # Combined for storage
-            files = {'file': (f"chunk_{chunk_index}", payload)}
-            data = {'file_id': file_id, 'chunk_index': chunk_index}
-            
-            response = requests.post(SERVER_URL, files=files, data=data)
-            print(f"Uploaded chunk {chunk_index}: {response.status_code}")
-            chunk_index += 1
+            requests.post(f"{URL}/upload", 
+                          data={'file_id': file_id, 'chunk_index': idx}, 
+                          files={'file': nonce + ciphertext})
+            print(f"Uploaded chunk {idx}")
+            idx += 1
+    return file_id
 
-if __name__ == "__main__":
-    # Generate key if it doesn't exist
-    if not os.path.exists("master.key"):
-        with open("master.key", "wb") as f:
-            f.write(AESGCM.generate_key(bit_length=256))
+def secure_download(file_id, output_name, total_chunks):
+    aesgcm = AESGCM(get_key())
+    with open(output_name, "wb") as out_f:
+        for idx in range(total_chunks):
+            r = requests.get(f"{URL}/download/{file_id}/{idx}")
+            raw = r.content
+            nonce, ciphertext = raw[:12], raw[12:]
             
-    secure_upload("test.txt", "master.key")
+            # Integrity Check (HMAC equivalent)
+            decrypted = aesgcm.decrypt(nonce, ciphertext, None)
+            out_f.write(decrypted)
+            print(f"Decrypted chunk {idx}")
+    print("Download and Decryption Successful!")
